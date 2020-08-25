@@ -29,15 +29,15 @@
     //
     if (isset($_SERVER['PHP_SELF']))
     {
-	$script = $_SERVER['PHP_SELF'];
+        $script = $_SERVER['PHP_SELF'];
     }
     elseif (isset($_SERVER['SCRIPT_NAME']))
     {
-	$script = $_SERVER['SCRIPT_NAME'];
+        $script = $_SERVER['SCRIPT_NAME'];
     }
     else
     {
-	die('can\'t determine script name!');
+        die('can\'t determine script name!');
     }
 
     $page_list  = array('s','h','d','m');
@@ -58,7 +58,7 @@
         global $page,  $page_list;
         global $iface, $iface_list;
         global $graph, $graph_list;
-	global $colorscheme, $style;
+        global $colorscheme, $style;
         //
         // get interface data
         //
@@ -82,10 +82,10 @@
             $graph = $graph_list[0];
         }
 
-	$tp = "./themes/$style";
+        $tp = "./themes/$style";
         if (!is_dir($tp) || !file_exists("$tp/theme.php") || !preg_match('/^[a-z0-9-_]+$/i', $style))
         {
-	    $style = DEFAULT_COLORSCHEME;
+            $style = DEFAULT_COLORSCHEME;
         }
     }
 
@@ -95,25 +95,25 @@
         global $iface, $vnstat_bin, $data_dir;
         global $hour,$day,$month,$top,$summary;
 
-	$vnstat_data = array();
+        $vnstat_data = array();
         if (!isset($vnstat_bin) || $vnstat_bin == '')
         {
-	    if (file_exists("$data_dir/vnstat_dump_$iface"))
-	    {
-        	$vnstat_data = file("$data_dir/vnstat_dump_$iface");
-	    }
+            if (file_exists("$data_dir/vnstat_dump_$iface"))
+            {
+                $vnstat_data = file("$data_dir/vnstat_dump_$iface");
+            }
         }
         else
         {
             $fd = popen("$vnstat_bin --dumpdb -i $iface", "r");
             if (is_resource($fd))
             {
-            	$buffer = '';
-            	while (!feof($fd)) {
-                	$buffer .= fgets($fd);
-            	}
-            	$vnstat_data = explode("\n", $buffer);
-            	pclose($fd);
+                $buffer = '';
+                while (!feof($fd)) {
+                    $buffer .= fgets($fd);
+                }
+                $vnstat_data = explode("\n", $buffer);
+                pclose($fd);
             }
         }
 
@@ -124,7 +124,7 @@
         $top = array();
 
         if (isset($vnstat_data[0]) && strpos($vnstat_data[0], 'Error') !== false) {
-          return;
+            return;
         }
 
         //
