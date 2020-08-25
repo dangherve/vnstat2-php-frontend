@@ -70,7 +70,7 @@
 
         global $byte_notation;
 
-        $units = array('TB','GB','MB','KB');
+        $units = array('TiB','GiB','MiB','KiB');
         $scale = 1024*1024*1024;
         $ui = 0;
 
