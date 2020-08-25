@@ -100,112 +100,131 @@
         {
             if (file_exists("$data_dir/vnstat_dump_$iface"))
             {
-                $vnstat_data = file("$data_dir/vnstat_dump_$iface");
+                $file_data = file_get_contents("$data_dir/vnstat_dump_$iface");
+                $vnstat_data = json_decode($file_data, TRUE);
             }
         }
         else
         {
-            $fd = popen("$vnstat_bin --dumpdb -i $iface", "r");
+            // FIXME: use mode and limit parameter to reduce data that needs to be parsed
+            $fd = popen("$vnstat_bin --json -i $iface", "r");
             if (is_resource($fd))
             {
                 $buffer = '';
                 while (!feof($fd)) {
                     $buffer .= fgets($fd);
                 }
-                $vnstat_data = explode("\n", $buffer);
                 pclose($fd);
+                $vnstat_data = json_decode($buffer, TRUE);
             }
         }
-
 
         $day = array();
         $hour = array();
         $month = array();
         $top = array();
 
-        if (isset($vnstat_data[0]) && strpos($vnstat_data[0], 'Error') !== false) {
+        if (!isset($vnstat_data) || !isset($vnstat_data['vnstatversion'])) {
             return;
         }
 
-        //
-        // extract data
-        //
-        foreach($vnstat_data as $line)
-        {
-            $d = explode(';', trim($line));
-            if ($d[0] == 'd')
-            {
-                $day[$d[1]]['time']  = $d[2];
-                $day[$d[1]]['rx']    = $d[3] * 1024 + $d[5];
-                $day[$d[1]]['tx']    = $d[4] * 1024 + $d[6];
-                $day[$d[1]]['act']   = $d[7];
-                if ($d[2] != 0 && $use_label)
-                {
-                    $day[$d[1]]['label'] = strftime(T('datefmt_days'),$d[2]);
-                    $day[$d[1]]['img_label'] = strftime(T('datefmt_days_img'), $d[2]);
-                }
-                elseif($use_label)
-                {
-                    $day[$d[1]]['label'] = '';
-                    $day[$d[1]]['img_label'] = '';
-                }
-            }
-            else if ($d[0] == 'm')
-            {
-                $month[$d[1]]['time'] = $d[2];
-                $month[$d[1]]['rx']   = $d[3] * 1024 + $d[5];
-                $month[$d[1]]['tx']   = $d[4] * 1024 + $d[6];
-                $month[$d[1]]['act']  = $d[7];
-                if ($d[2] != 0 && $use_label)
-                {
-                    $month[$d[1]]['label'] = strftime(T('datefmt_months'), $d[2]);
-                    $month[$d[1]]['img_label'] = strftime(T('datefmt_months_img'), $d[2]);
-                }
-                else if ($use_label)
-                {
-                    $month[$d[1]]['label'] = '';
-                    $month[$d[1]]['img_label'] = '';
-                }
-            }
-            else if ($d[0] == 'h')
-            {
-                $hour[$d[1]]['time'] = $d[2];
-                $hour[$d[1]]['rx']   = $d[3];
-                $hour[$d[1]]['tx']   = $d[4];
-                $hour[$d[1]]['act']  = 1;
-                if ($d[2] != 0 && $use_label)
-                {
-                    $st = $d[2] - ($d[2] % 3600);
-                    $et = $st + 3600;
-                    $hour[$d[1]]['label'] = strftime(T('datefmt_hours'), $st).' - '.strftime(T('datefmt_hours'), $et);
-                    $hour[$d[1]]['img_label'] = strftime(T('datefmt_hours_img'), $d[2]);
-                }
-                else if ($use_label)
-                {
-                    $hour[$d[1]]['label'] = '';
-                    $hour[$d[1]]['img_label'] = '';
-                }
-            }
-            else if ($d[0] == 't')
-            {
-                $top[$d[1]]['time'] = $d[2];
-                $top[$d[1]]['rx']   = $d[3] * 1024 + $d[5];
-                $top[$d[1]]['tx']   = $d[4] * 1024 + $d[6];
-                $top[$d[1]]['act']  = $d[7];
-                if($use_label)
-                {
-                    $top[$d[1]]['label'] = strftime(T('datefmt_top'), $d[2]);
-                    $top[$d[1]]['img_label'] = '';
-                }
-            }
-            else
-            {
-                $summary[$d[0]] = isset($d[1]) ? $d[1] : '';
+        $iface_data = $vnstat_data['interfaces'][0];
+        $traffic_data = $iface_data['traffic'];
+        // data are grouped for hour, day, month, ... and a data entry looks like this:
+        // [0] => Array
+        //   (
+        //     [id] => 48032
+        //     [date] => Array
+        //       (
+        //         [year] => 2020
+        //         [month] => 8
+        //         [day] => 23
+        //       )
+        //     [time] => Array
+        //       (
+        //         [hour] => 16
+        //         [minute] => 0
+        //       )
+        //     [rx] => 2538730
+        //     [tx] => 2175640
+        //   )
+
+        // per-day data
+        // FIXME: instead of using array_reverse, sorting by date/time keys would be more reliable
+        $day_data = array_reverse($traffic_data['day']);
+        for($i = 0; $i < min(30, count($day_data)); $i++) {
+            $d = $day_data[$i];
+            $ts = mktime(0, 0, 0, $d['date']['month'], $d['date']['day'], $d['date']['year']);
+
+            $day[$i]['time'] = $ts;
+            $day[$i]['rx'] = $d['rx'] / 1024;
+            $day[$i]['tx'] = $d['tx'] / 1024;
+            $day[$i]['act'] = 1;
+
+            if($use_label) {
+                $day[$i]['label'] = strftime(T('datefmt_days'), $ts);
+                $day[$i]['img_label'] = strftime(T('datefmt_days_img'), $ts);
             }
         }
 
-        rsort($day);
-        rsort($month);
-        rsort($hour);
+        // per-month data
+        $month_data = array_reverse($traffic_data['month']);
+        for($i = 0; $i < min(12, count($month_data)); $i++) {
+            $d = $month_data[$i];
+            $ts = mktime(0, 0, 0, $d['date']['month']+1, 0, $d['date']['year']);
+
+            $month[$i]['time'] = $ts;
+            $month[$i]['rx'] = $d['rx'] / 1024;
+            $month[$i]['tx'] = $d['tx'] / 1024;
+            $month[$i]['act'] = 1;
+
+            if($use_label) {
+                $month[$i]['label'] = strftime(T('datefmt_months'), $ts);
+                $month[$i]['img_label'] = strftime(T('datefmt_months_img'), $ts);
+            }
+        }
+
+        // per-hour data
+        $hour_data = array_reverse($traffic_data['hour']);
+        for($i = 0; $i < min(24, count($hour_data)); $i++) {
+            $d = $hour_data[$i];
+            $ts = mktime($d['time']['hour'], $d['time']['minute'], 0, $d['date']['month'], $d['date']['day'], $d['date']['year']);
+
+            $hour[$i]['time'] = $ts;
+            $hour[$i]['rx'] = $d['rx'] / 1024;
+            $hour[$i]['tx'] = $d['tx'] / 1024;
+            $hour[$i]['act'] = 1;
+
+            if($use_label) {
+                $hour[$i]['label'] = strftime(T('datefmt_hours'), $ts);
+                $hour[$i]['img_label'] = strftime(T('datefmt_hours_img'), $ts);
+            }
+        }
+
+        // top10 days data
+        $top10_data = $traffic_data['top'];
+        for($i = 0; $i < min(10, count($top10_data)); $i++) {
+            $d = $top10_data[$i];
+            $ts = mktime(0, 0, 0, $d['date']['month'], $d['date']['day'], $d['date']['year']);
+
+            $top[$i]['time'] = $ts;
+            $top[$i]['rx'] = $d['rx'] / 1024;
+            $top[$i]['tx'] = $d['tx'] / 1024;
+            $top[$i]['act'] = 1;
+
+            if($use_label) {
+                $top[$i]['label'] = strftime(T('datefmt_top'), $ts);
+                $top[$i]['img_label'] = '';
+            }
+        }
+
+        // summary data from old dumpdb command
+        // all time total received/transmitted MB
+        $summary['totalrx'] = $traffic_data['total']['rx'] / 1024 / 1024;
+        $summary['totaltx'] = $traffic_data['total']['tx'] / 1024 / 1024;
+        // FIXME: used to be "total rx kB counter" from dumpdb, no idea how to get those
+        $summary['totalrxk'] = 0;
+        $summary['totaltxk'] = 0;
+        $summary['interface'] = $iface_data['name'];
     }
 ?>
