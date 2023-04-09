@@ -25,7 +25,7 @@ $L['This month'] = 'Ce mois';
 $L['All time'] = 'Tout temps';
 
 // graph text
-$L['Traffic data for'] = 'Traffic de donnée pour :';
+$L['Traffic data for'] = 'Traffic de donnée pour ';
 $L['bytes in'] = 'Octects entrant';
 $L['bytes out'] = 'Octects sortant';
 

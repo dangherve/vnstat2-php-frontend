@@ -145,7 +145,7 @@
         {
             if ($tab[$i]['act'] == 1)
             {
-                $t = $tab[$i]['label'];
+                $t = utf8_encode($tab[$i]['label']);
                 $rx = kbytes_to_string($tab[$i]['rx']);
                 $tx = kbytes_to_string($tab[$i]['tx']);
                 $total = kbytes_to_string($tab[$i]['rx']+$tab[$i]['tx']);
