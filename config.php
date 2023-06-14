@@ -55,11 +55,7 @@
     // if there's no name set for an interface then the interface identifier
     // will be displayed instead
     //
-    $iface_title['INTERFACE'] = 'Reseau';
-    $iface_title['tun0'] = 'VPN 1';
-    $iface_title['tun1'] = 'VPN 2';
-    $iface_title['tun2'] = 'VPN 3';
-    $iface_title['tun3'] = 'VPN 4';
+    //$iface_title['INTERFACE'] = 'Reseau';
     //
     // There are two possible sources for vnstat data. If the $vnstat_bin
     // variable is set then vnstat is called directly from the PHP script
